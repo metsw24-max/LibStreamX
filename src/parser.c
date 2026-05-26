@@ -122,11 +122,12 @@ streamx_status_t parser_parse_stream(parser_t *parser, ringbuf_t *rb, packet_t *
                     logger_log(LOG_LEVEL_WARN,
                                "checksum mismatch: got 0x%02X, want 0x%02X",
                                wire_checksum, calc_checksum);
+                    uint8_t first_byte = (parser->current_len > 0) ? parser->payload_buf[0] : 0;
                     free(parser->payload_buf);
+                    parser->payload_buf = NULL;
                     logger_log(LOG_LEVEL_DEBUG,
                                "discarded frame id=%u (first byte=0x%02X)",
-                               parser->current_id, parser->payload_buf[0]);
-                    parser->payload_buf = NULL;
+                                parser->current_id, first_byte);                 
                     status = STREAMX_ERR_CHECKSUM;
                     goto reset_state;
                 }
