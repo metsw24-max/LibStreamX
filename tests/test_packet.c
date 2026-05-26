@@ -54,6 +54,71 @@ static int pkt_free_null_is_noop(void) {
     return 0;
 }
 
+static int pkt_clone_is_deep_copy(void) {
+    uint8_t data[] = {0x01, 0x02, 0x03};
+    packet_t *src = packet_create(1, 0, data, sizeof(data), "test");
+    TEST_ASSERT(src != NULL, "src packet_create returned NULL");
+
+    packet_t *dst = packet_clone(src);
+    TEST_ASSERT(dst != NULL, "packet_clone returned NULL");
+
+    dst->payload[0] = 0xFF;
+    TEST_ASSERT_EQ_INT(src->payload[0], 0x01,
+                       "clone must not share payload");
+
+    dst->tag[0] = 'X';
+    TEST_ASSERT_EQ_INT(src->tag[0], 't',
+                       "clone must not share tag");
+
+    packet_free(src);
+    packet_free(dst);
+
+    return 0;
+}
+
+static int pkt_clone_null_returns_null(void) {
+    TEST_ASSERT(packet_clone(NULL) == NULL,
+                "packet_clone(NULL) must return NULL");
+    return 0;
+}
+
+static int pkt_clone_zero_length(void) {
+    packet_t *src =
+        packet_create(1, 0, NULL, 0, "tag");
+
+    TEST_ASSERT(src != NULL,
+                "packet_create failed");
+
+    packet_t *dst = packet_clone(src);
+
+    TEST_ASSERT(dst != NULL,
+                "clone failed");
+
+    TEST_ASSERT_EQ_INT(dst->length, 0,
+                       "length should be zero");
+
+    return 0;
+}
+
+static int pkt_clone_null_tag(void) {
+    uint8_t data[] = {0x01};
+
+    packet_t *src =
+        packet_create(1, 0, data, sizeof(data), NULL);
+
+    TEST_ASSERT(src != NULL, "packet_create failed");
+
+    packet_t *dst = packet_clone(src);
+
+    TEST_ASSERT(dst != NULL,
+                "clone failed with NULL tag");
+
+    packet_free(src);
+    packet_free(dst);
+
+    return 0;
+}
+
 int test_packet_run(void) {
     int failures = 0;
     printf("[packet]\n");
@@ -61,5 +126,9 @@ int test_packet_run(void) {
     TEST_RUN(pkt_create_deep_copies_payload);
     TEST_RUN(pkt_create_deep_copies_tag);
     TEST_RUN(pkt_free_null_is_noop);
+    TEST_RUN(pkt_clone_is_deep_copy);
+    TEST_RUN(pkt_clone_null_returns_null);
+    TEST_RUN(pkt_clone_zero_length);
+    TEST_RUN(pkt_clone_null_tag);
     return failures;
 }
