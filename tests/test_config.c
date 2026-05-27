@@ -84,7 +84,18 @@ static int cfg_null_guards(void) {
     config_free(NULL);
     return 0;
 }
-
+/* Regression test: config_load() with a path that contains printf
+ * format specifiers must return NULL without invoking undefined
+ * behaviour.  Under the original code, ASan/UBSan would fire here
+ * because the raw path was passed as the format string to logger_log().
+ * After the fix the path is used only as a string argument to a fixed
+ * format literal, so this must complete cleanly and return NULL. */
+static int cfg_load_format_specifier_path(void) {
+    config_t *cfg = config_load("%s%s%s%s");
+    TEST_ASSERT(cfg == NULL,
+                "config_load with format-specifier path must return NULL");
+    return 0;
+}
 int test_config_run(void) {
     int failures = 0;
     printf("[config]\n");
@@ -93,5 +104,6 @@ int test_config_run(void) {
     TEST_RUN(cfg_quoted_values);
     TEST_RUN(cfg_missing_file);
     TEST_RUN(cfg_null_guards);
+    TEST_RUN(cfg_load_format_specifier_path);
     return failures;
 }
