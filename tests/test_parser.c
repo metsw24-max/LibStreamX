@@ -138,6 +138,36 @@ static int parser_tokenize_large_metadata_value(void) {
     return 0;
 }
 
+static int parser_checksum_mismatch_returns_err(void) {
+    parser_t *parser = parser_create(8);
+    TEST_ASSERT(parser != NULL, "parser_create");
+
+    /* Build a minimal STRX frame with a flipped checksum byte.
+     * Magic(4) + id(4) + type(2) + len(2) + payload(1) + bad_checksum(1) */
+    uint8_t frame[] = {
+        'S', 'T', 'R', 'X',          /* magic */
+        0x01, 0x00, 0x00, 0x00,       /* id = 1 */
+        0x00, 0x00,                   /* type = 0 */
+        0x01, 0x00,                   /* len = 1 */
+        0xAA ^ 0x55,                  /* payload byte (XOR encoded) */
+        0xFF ^ 0x55                   /* wrong checksum byte */
+    };
+
+    ringbuf_t *rb = ringbuf_create(64);
+    TEST_ASSERT(rb != NULL, "ringbuf_create");
+    ringbuf_write(rb, frame, sizeof(frame));
+
+    packet_t *pkt = NULL;
+    streamx_status_t s = parser_parse_stream(parser, rb, &pkt);
+
+    TEST_ASSERT_EQ_INT(s, STREAMX_ERR_CHECKSUM,
+                       "bad checksum must return STREAMX_ERR_CHECKSUM");
+    TEST_ASSERT(pkt == NULL, "no packet on checksum failure");
+
+    ringbuf_free(rb);
+    parser_free(parser);
+    return 0;
+}
 int test_parser_run(void) {
     int failures = 0;
     printf("[parser]\n");
@@ -148,5 +178,6 @@ int test_parser_run(void) {
     TEST_RUN(parser_tokenize_rejects_missing_eq);
     TEST_RUN(parser_tokenize_null_guard);
     TEST_RUN(parser_tokenize_large_metadata_value);
+    TEST_RUN(parser_checksum_mismatch_returns_err);
     return failures;
 }
