@@ -127,7 +127,7 @@ streamx_status_t parser_parse_stream(parser_t *parser, ringbuf_t *rb, packet_t *
                     parser->payload_buf = NULL;
                     logger_log(LOG_LEVEL_DEBUG,
                                "discarded frame id=%u (first byte=0x%02X)",
-                                parser->current_id, first_byte);                 
+                               parser->current_id, first_byte);             
                     status = STREAMX_ERR_CHECKSUM;
                     goto reset_state;
                 }
