@@ -104,29 +104,44 @@ streamx_status_t parser_parse_stream(parser_t *parser, ringbuf_t *rb, packet_t *
 
                 /* Wire bytes are XOR'd with 0x55; store the decoded byte. */
                 parser->payload_buf[parser->payload_bytes_read++] = byte ^ 0x55;
+
                 if (parser->payload_bytes_read == parser->current_len) {
                     parser->payload_buf[parser->current_len] = '\0';
                     parser->state = STATE_CHECKSUM;
                 }
+
                 break;
             }
 
             case STATE_CHECKSUM: {
                 uint8_t calc_checksum = 0;
+
                 for (uint16_t i = 0; i < parser->current_len; i++) {
                     calc_checksum ^= parser->payload_buf[i];
                 }
+
                 uint8_t wire_checksum = byte ^ 0x55;
 
                 if (calc_checksum != wire_checksum) {
                     logger_log(LOG_LEVEL_WARN,
                                "checksum mismatch: got 0x%02X, want 0x%02X",
                                wire_checksum, calc_checksum);
-                    free(parser->payload_buf);
+
+                    uint8_t first_byte = 0;
+
+                    if (parser->payload_buf != NULL &&
+                        parser->current_len > 0) {
+                        first_byte = parser->payload_buf[0];
+                    }
+
                     logger_log(LOG_LEVEL_DEBUG,
                                "discarded frame id=%u (first byte=0x%02X)",
-                               parser->current_id, parser->payload_buf[0]);
+                               parser->current_id,
+                               first_byte);
+
+                    free(parser->payload_buf);
                     parser->payload_buf = NULL;
+
                     status = STREAMX_ERR_CHECKSUM;
                     goto reset_state;
                 }
@@ -136,6 +151,7 @@ streamx_status_t parser_parse_stream(parser_t *parser, ringbuf_t *rb, packet_t *
                                               parser->payload_buf,
                                               parser->current_len,
                                               "parsed_stream_frame");
+
                 free(parser->payload_buf);
                 parser->payload_buf = NULL;
 
@@ -146,6 +162,7 @@ streamx_status_t parser_parse_stream(parser_t *parser, ringbuf_t *rb, packet_t *
 
                 *out_packet = pkt;
                 parser->state = STATE_MAGIC;
+
                 return STREAMX_OK;
             }
         }
@@ -157,6 +174,7 @@ reset_state:
     parser->state = STATE_MAGIC;
     parser->header_bytes_read = 0;
     parser->payload_bytes_read = 0;
+
     return status;
 }
 
@@ -166,19 +184,23 @@ streamx_status_t parser_tokenize_metadata(parser_t *parser, const char *meta_str
     }
 
     char *data_copy = strdup(meta_str);
+
     if (data_copy == NULL) {
         return STREAMX_ERR_NOMEM;
     }
 
     char *token = strtok(data_copy, ";");
+
     while (token != NULL) {
         char *eq = strchr(token, '=');
+
         if (eq == NULL) {
             free(data_copy);
             return STREAMX_ERR_INVALID;
         }
 
         *eq = '\0';
+
         char *key = token;
         char *val = eq + 1;
 
@@ -190,7 +212,7 @@ streamx_status_t parser_tokenize_metadata(parser_t *parser, const char *meta_str
         parser->tokens[parser->token_count].key = strdup(key);
         parser->tokens[parser->token_count].value = strdup(val);
 
-       if (strcmp(val, "ABORT") == 0) {
+        if (strcmp(val, "ABORT") == 0) {
             free(data_copy);
             return STREAMX_ERR_INVALID;
         }
@@ -200,6 +222,7 @@ streamx_status_t parser_tokenize_metadata(parser_t *parser, const char *meta_str
     }
 
     free(data_copy);
+
     return STREAMX_OK;
 }
 
@@ -217,10 +240,12 @@ void parser_free(parser_t *parser) {
             if (parser->tokens[i].key != NULL) {
                 free(parser->tokens[i].key);
             }
+
             if (parser->tokens[i].value != NULL) {
                 free(parser->tokens[i].value);
             }
         }
+
         free(parser->tokens);
     }
 
