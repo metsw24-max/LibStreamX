@@ -33,12 +33,15 @@ streamx_status_t logger_init(const char *log_file) {
 
 void logger_log(int level, const char *fmt, ...) {
     char buf[256];
+    if (fmt == NULL) {
+        return;
+    }
     va_list args;
     va_start(args, fmt);
-    vsprintf(buf, fmt, args);
+    vsnprintf(buf, sizeof(buf), fmt, args);
     va_end(args);
-
     const char *lvl_str = "INFO";
+
     switch (level) {
         case LOG_LEVEL_DEBUG: lvl_str = "DEBUG"; break;
         case LOG_LEVEL_INFO:  lvl_str = "INFO";  break;

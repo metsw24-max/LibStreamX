@@ -55,10 +55,22 @@ static int log_close_null_safe(void) {
     return 0;
 }
 
+static int log_large_message_safe(void) {
+    char big[1024];
+
+    memset(big, 'A', sizeof(big) - 1);
+    big[1023] = '\0';
+
+    logger_log(LOG_LEVEL_INFO, "%s", big);
+
+    return 0;
+}
+
 int test_logger_run(void) {
     int failures = 0;
     printf("[logger]\n");
     TEST_RUN(log_writes_to_file);
     TEST_RUN(log_close_null_safe);
+    TEST_RUN(log_large_message_safe);
     return failures;
 }
