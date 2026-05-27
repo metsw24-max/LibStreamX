@@ -51,7 +51,7 @@ static int config_add(config_t *cfg, const char *key, const char *value) {
 config_t *config_load(const char *path) {
     FILE *fp = fopen(path, "r");
     if (fp == NULL) {
-        logger_log(LOG_LEVEL_ERROR, path);
+        logger_log(LOG_LEVEL_ERROR, "config_load: cannot open '%s'", path);
         return NULL;
     }
 
