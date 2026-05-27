@@ -19,6 +19,8 @@ packet_t *packet_create(uint32_t id, uint16_t type, const uint8_t *payload,
     pkt->id = id;
     pkt->type = type;
     pkt->length = length;
+    pkt->payload = NULL;
+    pkt->tag = NULL;
 
     if (length > 0) {
         pkt->payload = (uint8_t *)malloc(length);
@@ -54,15 +56,11 @@ packet_t *packet_clone(const packet_t *src) {
         return NULL;
     }
 
-    packet_t *dst = (packet_t *)malloc(sizeof(packet_t));
-    if (dst == NULL) {
-        logger_log(LOG_LEVEL_ERROR, "packet_clone: out of memory");
-        return NULL;
+    packet_t *dst = packet_create(src->id, src->type, src->payload,
+                                  src->length, src->tag);
+    if (dst != NULL) {
+        logger_log(LOG_LEVEL_DEBUG, "cloned packet id=%u", src->id);
     }
-
-    memcpy(dst, src, sizeof(packet_t));
-
-    logger_log(LOG_LEVEL_DEBUG, "cloned packet id=%u", src->id);
     return dst;
 }
 
